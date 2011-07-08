@@ -41,6 +41,13 @@ static struct {
 
 int sptr = 0;
 
+static struct {
+	int valid;
+	int pid;
+} rrq[MAXPROCS];
+
+int numProcs;
+
 int curInd;
 int curProc;
 
@@ -62,6 +69,7 @@ void InitSched ()
 	int i;
 	curInd = 0;
 	curProc = 0;
+	numProcs = 0;
 	min = 50.0;
 
 	for (i = 0; i < MAXPROCS; i++) {
@@ -80,8 +88,8 @@ void InitSched ()
 
 
 	}
-	SetSchedPolicy (FIFO);
-	//SetSchedPolicy (ROUNDROBIN);
+	//SetSchedPolicy (FIFO);
+	SetSchedPolicy (ROUNDROBIN);
         //SetSchedPolicy (PROPORTIONAL);
 	SetTimer (TIMERINTERVAL);
 }
@@ -168,7 +176,7 @@ int EndingProc (pid)
 	for (i = 0; i < MAXPROCS; i++) {
 		if (q[i].valid && q[i].pid == pid) {
 			q[i].valid = 0;
-			qptr--;
+		//	qptr--;
 		}
 	}
 	
