@@ -255,8 +255,6 @@ int SchedProc ()
 		
 		cputime++;
 
-		
-
 		mr = proctab[curInd].ratio;
 
 		// find the process with the lowest utilization ratio (needs CPU most)
@@ -281,14 +279,16 @@ int SchedProc ()
 		}
 
 		// n is the index of the process with the lowest current ratio
-		if(proctab[curInd].valid) {
-			proctab[curInd].use++; // increment the number of quantums used
-			return (proctab[curInd].pid);
+		for ( j = 0; j < MAXPROCS; j++) {
+			if(proctab[curInd].valid) {
+				// increment the number of quantums used
+				proctab[curInd].use++;
+				return (proctab[curInd].pid);
+			}
+			else curInd = (curInd+1) % MAXPROCS;
 		}
-	
-
 		break;
-
+	
 	}
 	
 	return (0);
