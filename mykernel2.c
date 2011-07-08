@@ -55,8 +55,6 @@ float min;
 
 
 
-
-
 /*	InitSched () is called when kernel starts up.  Initialize data
  *	structures (such as the process table) here.  Also, call any
  *	initialization procedures, such as SetSchedPolicy to set the
@@ -84,13 +82,8 @@ void InitSched ()
 
 		q[i].valid = 0;
 		s[i].valid = 0;
-//		rrpt[i].valid = 0;
-
-
 	}
-	//SetSchedPolicy (FIFO);
-	SetSchedPolicy (ROUNDROBIN);
-        //SetSchedPolicy (PROPORTIONAL);
+        SetSchedPolicy (PROPORTIONAL);
 	SetTimer (TIMERINTERVAL);
 }
 
@@ -125,13 +118,9 @@ int StartingProc (pid)
 	if ( ! rrq[numProcs].valid ) {
 		rrq[numProcs].valid = 1;
 		rrq[numProcs].pid = pid;
-//		Printf("just added pid %d\n",rrq[numProcs].pid);
-
 		numProcs = (numProcs+1) % MAXPROCS;
 	}
 
-
-//	for (prev = MAXPROCS-1, i = 0, next = 1; i < MAXPROCS; prev++, i++, next++){
 	for (i = 0; i < MAXPROCS; i++) {
 		if (! proctab[i].valid) {
 			proctab[i].valid = 1;
@@ -185,14 +174,12 @@ int EndingProc (pid)
 	for (i = 0; i < MAXPROCS; i++) {
 		if (q[i].valid && q[i].pid == pid) {
 			q[i].valid = 0;
-		//	qptr--;
 		}
 	}
 	
 	for (i = 0; i < MAXPROCS; i++) {
 		if (s[i].valid && s[i].pid == pid) {
 			s[i].valid = 0;
-			sptr--;
 		}
 	}
 
@@ -227,8 +214,8 @@ int EndingProc (pid)
 int SchedProc ()
 {
 	int i, j, n;
-	float m, r;
-	int nextProc, nextInd;
+	float r;
+
 
 	switch (GetSchedPolicy ()) {
 
@@ -245,7 +232,7 @@ int SchedProc ()
 
 		/* your code here */
 
-		/* uses queue, pops from front */
+		/* uses queue, pops from front (iterate in order) */
 		for (i = 0; i < MAXPROCS; i++) {
 			if (q[i].valid) {
 				return (q[i].pid);
@@ -256,10 +243,9 @@ int SchedProc ()
 	case LIFO:
 
 		/* your code here */
-
-		/* uses stack, pops from end */
-//		i = sptr - 1;
-		for (i = MAXPROCS - 1; i >= 0; i--) {
+		
+		/* uses stack, pops from end (go backwards from FIFO)*/
+		for (i = MAXPROCS-1; i >= 0; i--) {
 			if (s[i].valid) {
 				return (s[i].pid);
 			}
@@ -269,70 +255,77 @@ int SchedProc ()
 	case ROUNDROBIN:
 
 		/* your code here */
-/*		
-		if(rrq[curInd].valid && numProcs!=0) {
-			curProc = rrq[curInd].pid;
-			curInd = (curInd+1) % numProcs;
-		//	Printf("numProcs is %d\n",numProcs);
-			return curProc;
-		}
-		else {
-			return 0;
-		}	
-*/
 
-
-		
+		/* uses a circular queue
+		 * i is the index that cycles around, starting at the current process
+		 * j ensures that the loop ends at after MAXPROCS iterations
+		 */
 		for ( i = curInd, j = 0; j < MAXPROCS; i = (i+1) % MAXPROCS, j++) {
-
-
 			if(rrq[i].valid) {
 				curProc = rrq[i].pid;
 				curInd = (i+1) % MAXPROCS;
-			//	Printf("about to run p[%d] =  %d\n",i,curProc);
 				return curProc;
 			}
-			
-
 		}
-			
 		break;
 
 	case PROPORTIONAL:
 
 		/* your code here */
-		//cputime++;
-		//Printf("cputime %f\n",(float)cputime);
+		
+/*
+		for ( i = curInd, j = 0; j < MAXPROCS; i = (i+1) % MAXPROCS, j++) {
+			if(proctab[i].valid) {
+				proctab[i].acc++;
+				r = proctab[i].util / proctab[i].promised;
 
-		m = 50.0; // min ratio
+				if (r < min) {
+					min = r;
+				//	curInd = (i+1) % MAXPROCS;
+					curInd = i;
+				}
+			}
+		}
 
+		if(proctab[curInd].valid) {
+			proctab[curInd].use++;
+			proctab[curInd].util = (float) proctab[curInd].use / (float) proctab[curInd].acc;
+			return proctab[curInd].pid;
+		}
+
+*/
+//*
 		// find the process with the lowest ratio, needs CPU most
 		for(i = 0; i < MAXPROCS; i++) {
 			if(proctab[i].valid) {
 				proctab[i].acc++;
 
 				r = proctab[i].util / proctab[i].promised;
-			Printf("p[%d]=%d has u %f\n",i,proctab[i].pid,proctab[i].util);
 
-//		Printf("p[%d]=%d has r %f\n",i,proctab[i].pid,r);
+	//		Printf("p[%d]=%d has u %f\n",i,proctab[i].pid,proctab[i].util);
 
-				if(r < m) {
-					m = proctab[i].ratio;
+	//		Printf("p[%d]=%d has r %f\n",i,proctab[i].pid,r);
+
+				if(r < min) {
+					min = r;
 					curInd = i;
-//		Printf("p[%d]=%d has r %f\n",curInd,proctab[curInd].pid,r);
+	//		Printf("p[%d]=%d has r %f\n",curInd,proctab[curInd].pid,r);
 				}
 			}
 		}
+		
+	//	Printf("curInd is %d\n",curInd);
+
 		// n is the index of the process with the lowest current ratio
 		if(proctab[curInd].valid) {
 			// fraction of cpu time received
 			
 			proctab[curInd].use++;
-	proctab[curInd].util = (float) proctab[curInd].use / (float) proctab[curInd].acc;
+		proctab[curInd].util = (float) proctab[curInd].use / (float) proctab[curInd].acc;
 			
-//	Printf("p[%d]=%d has u %f\n",curInd,proctab[curInd].pid,proctab[curInd].util);
 			return (proctab[curInd].pid);
 		}
+//*/
 
 		break;
 
@@ -381,7 +374,6 @@ int MyRequestCPUrate (pid, m, n)
 	for(int i = 0; i < MAXPROCS; i++) {
 		if(proctab[i].pid == pid && proctab[i].valid) {
 			proctab[i].promised = (float)m / (float)n;
-//			Printf("proc %d is promised %f\n",pid,proctab[i].promised);
 		}
 	}
 
