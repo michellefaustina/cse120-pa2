@@ -81,7 +81,6 @@ void InitSched ()
 
 		proctab[i].acc = 0;
 		proctab[i].use = 0;
-	
 
 		q[i].valid = 0;
 		s[i].valid = 0;
@@ -116,6 +115,7 @@ int StartingProc (pid)
 		s[sptr].valid = 1;
 		s[sptr].pid = pid;
 		sptr++;
+		DoSched();
 	}
 
 	/* add to round robin queue */
@@ -162,6 +162,7 @@ int EndingProc (pid)
 	for (i = 0; i < MAXPROCS; i++) {
 		if (s[i].valid && s[i].pid == pid) {
 			s[i].valid = 0;
+			sptr--;
 		}
 	}
 
@@ -225,11 +226,17 @@ int SchedProc ()
 		/* your code here */
 		
 		/* uses stack, pops from end (go backwards from FIFO)*/
+/*
 		for (i = MAXPROCS-1; i >= 0; i--) {
 			if (s[i].valid) {
 				return (s[i].pid);
 			}
 		}
+*/
+		if (s[sptr-1].valid) {
+			return (s[sptr-1].pid);
+		}
+
 		break;
 
 	case ROUNDROBIN:
