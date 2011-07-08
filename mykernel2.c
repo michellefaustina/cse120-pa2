@@ -122,6 +122,15 @@ int StartingProc (pid)
 		sptr++;
 	}
 
+	if ( ! rrq[numProcs].valid ) {
+		rrq[numProcs].valid = 1;
+		rrq[numProcs].pid = pid;
+//		Printf("just added pid %d\n",rrq[numProcs].pid);
+
+		numProcs = (numProcs+1) % MAXPROCS;
+	}
+
+
 //	for (prev = MAXPROCS-1, i = 0, next = 1; i < MAXPROCS; prev++, i++, next++){
 	for (i = 0; i < MAXPROCS; i++) {
 		if (! proctab[i].valid) {
@@ -188,6 +197,14 @@ int EndingProc (pid)
 	}
 
 	for (i = 0; i < MAXPROCS; i++) {
+		if (rrq[i].valid && rrq[i].pid == pid) {
+			rrq[i].valid = 0;
+			numProcs--;
+		}
+	}
+
+
+	for (i = 0; i < MAXPROCS; i++) {
 
 		if (proctab[i].valid && proctab[i].pid == pid) {
 			proctab[i].valid = 0;
@@ -209,7 +226,7 @@ int EndingProc (pid)
 
 int SchedProc ()
 {
-	int i, n;
+	int i, j, n;
 	float m, r;
 	int nextProc, nextInd;
 
@@ -252,16 +269,32 @@ int SchedProc ()
 	case ROUNDROBIN:
 
 		/* your code here */
-		
-		if(q[curInd].valid && qptr!=0) {
-			curProc = q[curInd].pid;
-			curInd = (curInd+1) % qptr;
-		//	Printf("qptr is %d\n",qptr);
+/*		
+		if(rrq[curInd].valid && numProcs!=0) {
+			curProc = rrq[curInd].pid;
+			curInd = (curInd+1) % numProcs;
+		//	Printf("numProcs is %d\n",numProcs);
 			return curProc;
 		}
 		else {
 			return 0;
 		}	
+*/
+
+
+		
+		for ( i = curInd, j = 0; j < MAXPROCS; i = (i+1) % MAXPROCS, j++) {
+
+
+			if(rrq[i].valid) {
+				curProc = rrq[i].pid;
+				curInd = (i+1) % MAXPROCS;
+			//	Printf("about to run p[%d] =  %d\n",i,curProc);
+				return curProc;
+			}
+			
+
+		}
 			
 		break;
 
