@@ -23,6 +23,7 @@ static struct {
 	float promised;
 	float util;		/* fration of cpu time received */
 	float ratio;
+	int start;		/* for calculating total cpu time since starting */
 	int acc;		/* accumulated cpu time since starting */
 	int use;		/* counter for cpu time received */
 } proctab[MAXPROCS];
@@ -50,6 +51,8 @@ int numProcs;
 
 int curInd;
 int curProc;
+
+int cputime;
 
 float min;
 
@@ -115,6 +118,7 @@ int StartingProc (pid)
 		sptr++;
 	}
 
+	/* add to round robin queue */
 	if ( ! rrq[numProcs].valid ) {
 		rrq[numProcs].valid = 1;
 		rrq[numProcs].pid = pid;
@@ -125,36 +129,14 @@ int StartingProc (pid)
 		if (! proctab[i].valid) {
 			proctab[i].valid = 1;
 			proctab[i].pid = pid;
-
-			//break;
+			proctab[i].start = cputime;
 			return (1);
 		}
 	}
 
-/*
-	if (i < MAXPROCS) {
-		for (prev = i-1; prev % MAXPROCS != i; prev--) {
-			if (rrpt[prev % MAXPROCS].valid) {
-				rrpt[prev % MAXPROCS].pid = pid;
-				break;
-			}
-		}
-		for (next = i+1; next % MAXPROCS != prev % MAXPROCS+1; next++) {
-			if (proctab[next%MAXPROCS].valid) {
-				rrpt[i].valid = 1;
-				rrpt[i].pid = proctab[next].pid;
-				break;
-			}
-		}
-	}
-	else {
-*/
-		Printf ("Error in StartingProc: no free table entries\n");
-		return (0);
-/*
-	}
-	return (1);
-*/
+	Printf ("Error in StartingProc: no free table entries\n");
+	return (0);
+
 }
 			
 
@@ -190,9 +172,7 @@ int EndingProc (pid)
 		}
 	}
 
-
 	for (i = 0; i < MAXPROCS; i++) {
-
 		if (proctab[i].valid && proctab[i].pid == pid) {
 			proctab[i].valid = 0;
 			return (1);
@@ -214,7 +194,7 @@ int EndingProc (pid)
 int SchedProc ()
 {
 	int i, j, n;
-	float r;
+	float r, tmp, acc, mr;
 
 
 	switch (GetSchedPolicy ()) {
@@ -273,59 +253,39 @@ int SchedProc ()
 
 		/* your code here */
 		
-/*
-		for ( i = curInd, j = 0; j < MAXPROCS; i = (i+1) % MAXPROCS, j++) {
-			if(proctab[i].valid) {
-				proctab[i].acc++;
-				r = proctab[i].util / proctab[i].promised;
+		cputime++;
 
-				if (r < min) {
-					min = r;
-				//	curInd = (i+1) % MAXPROCS;
-					curInd = i;
-				}
-			}
-		}
-
-		if(proctab[curInd].valid) {
-			proctab[curInd].use++;
-			proctab[curInd].util = (float) proctab[curInd].use / (float) proctab[curInd].acc;
-			return proctab[curInd].pid;
-		}
-
-*/
-//*
-		// find the process with the lowest ratio, needs CPU most
-		for(i = 0; i < MAXPROCS; i++) {
-			if(proctab[i].valid) {
-				proctab[i].acc++;
-
-				r = proctab[i].util / proctab[i].promised;
-
-	//		Printf("p[%d]=%d has u %f\n",i,proctab[i].pid,proctab[i].util);
-
-	//		Printf("p[%d]=%d has r %f\n",i,proctab[i].pid,r);
-
-				if(r < min) {
-					min = r;
-					curInd = i;
-	//		Printf("p[%d]=%d has r %f\n",curInd,proctab[curInd].pid,r);
-				}
-			}
-		}
 		
-	//	Printf("curInd is %d\n",curInd);
+
+		mr = proctab[curInd].ratio;
+
+		// find the process with the lowest utilization ratio (needs CPU most)
+		for ( i = curInd, j = 0; j < MAXPROCS; i = (i+1) % MAXPROCS, j++) { 
+			if(proctab[i].valid) {
+				// increment the number of total quantums passed
+				// proctab[i].acc++;
+				acc = (float) cputime - (float) proctab[i].start;
+
+				// fraction of cpu time received
+				tmp = (float) proctab[i].use / acc;
+				proctab[i].util = tmp;
+
+				// find the ratio of this process
+				proctab[i].ratio = proctab[i].util / proctab[i].promised;
+
+				if(proctab[i].ratio < mr) {
+					mr = proctab[i].ratio;
+					curInd = i;
+				}
+			}
+		}
 
 		// n is the index of the process with the lowest current ratio
 		if(proctab[curInd].valid) {
-			// fraction of cpu time received
-			
-			proctab[curInd].use++;
-		proctab[curInd].util = (float) proctab[curInd].use / (float) proctab[curInd].acc;
-			
+			proctab[curInd].use++; // increment the number of quantums used
 			return (proctab[curInd].pid);
 		}
-//*/
+	
 
 		break;
 
